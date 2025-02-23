@@ -6,7 +6,7 @@ provider:
   region: 'ap-southeast-1'
   stage: 'dev'
   iam: 
-    role: arn:aws:iam::329599631112:role/aws-apigateway-lambda-authorization
+    role: arn:aws:iam::<<>>:role/aws-apigateway-lambda-authorization
 
 resources:
   Resources:
@@ -91,15 +91,15 @@ resources:
         Actions:
           ON_DEPLOYMENT_COMPLETE:
             - Name: "InvokeLambdaFunction"
-              Uri: arn:aws:lambda:ap-southeast-1:329599631112:function:appconfig-notification-on-deployment-complete
-              RoleArn: arn:aws:iam::329599631112:role/aws-apigateway-lambda-authorization
+              Uri: arn:aws:lambda:ap-southeast-1:<<>>:function:appconfig-notification-on-deployment-complete
+              RoleArn: arn:aws:iam::<<>>:role/aws-apigateway-lambda-authorization
 
 functions:
   AppConfigFunctionMeetupDemo:
     name: appconfig-function-meetup-demo
     handler: handlers/appconfig-fundtion-meetup-demo.handler
     layers:
-      - arn:aws:lambda:ap-southeast-1:980059726660:layer:AWS-AppConfig-Extension:125
+      - arn:aws:lambda:ap-southeast-1:<<>>:layer:AWS-AppConfig-Extension:125
     events:
       - http: 
           path: /get_appconfig_fn_meetup_demo
