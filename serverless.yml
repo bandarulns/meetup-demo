@@ -1,0 +1,115 @@
+# "service" is the name of this project. This will also be added to your AWS resource names.
+service: meetup-demo
+provider:
+  name: aws
+  runtime: nodejs18.x 
+  region: 'ap-southeast-1'
+  stage: 'dev'
+  iam: 
+    role: arn:aws:iam::329599631112:role/aws-apigateway-lambda-authorization
+
+resources:
+  Resources:
+    AppconfigMeetupDemoApplication:
+      Type: AWS::AppConfig::Application
+      Properties:
+        Name: appconfig-meetup-demo-application
+        Description: "Application for managing configurations"
+
+    AppConfigMeetupDemoEnvironment:
+      Type: AWS::AppConfig::Environment
+      Properties:
+        ApplicationId:
+          Ref: AppconfigMeetupDemoApplication
+        # Name: appconfig-meetup-demo-environment
+        Name: ${self:provider.stage}
+        Description: "Production environment"
+        Monitors: []
+
+    AppconfigMeetupDemoProfile:
+      Type: AWS::AppConfig::ConfigurationProfile
+      Properties:
+        ApplicationId:
+          Ref: AppconfigMeetupDemoApplication
+        # Name: appconfig-meetup-demo-profile
+        Name: FeatureFlags
+        LocationUri: "hosted"
+        Validators:
+          - Type: "JSON_SCHEMA"
+            Content: |
+              {
+                "type": "object",
+                "properties": {
+                  "version": { "type": "string" },
+                  "flags": { "type": "object" },
+                  "values": { "type": "object" }
+                },
+                "required": ["version", "flags", "values"]
+              }
+
+    AppconfigMeetupDemoDeploymentStrategy:
+      Type: AWS::AppConfig::DeploymentStrategy
+      Properties:
+        Name: appconfig-meetup-demo-deployment-strategy
+        Description: "Custom deployment strategy"
+        DeploymentDurationInMinutes: 0
+        GrowthFactor: 100
+        GrowthType: "LINEAR"
+        FinalBakeTimeInMinutes: 0
+        ReplicateTo: "NONE"
+
+    AppconfigMeetupDemoHostedConfigurationVersion:
+      Type: AWS::AppConfig::HostedConfigurationVersion
+      DependsOn:
+        - AppconfigMeetupDemoApplication
+        - AppconfigMeetupDemoProfile
+      Properties:
+        ApplicationId:
+          Ref: AppconfigMeetupDemoApplication
+        ConfigurationProfileId:
+          Ref: AppconfigMeetupDemoProfile
+        Content: ${file(./config.js)}
+        ContentType: "application/json"
+
+    AppconfigMeetupDemoDeployment:
+      Type: AWS::AppConfig::Deployment
+      Properties: 
+        ApplicationId:
+          Ref: AppconfigMeetupDemoApplication
+        ConfigurationProfileId:
+          Ref: AppconfigMeetupDemoProfile
+        ConfigurationVersion: !GetAtt AppconfigMeetupDemoHostedConfigurationVersion.VersionNumber
+        DeploymentStrategyId:
+          Ref: AppconfigMeetupDemoDeploymentStrategy
+        EnvironmentId:
+          Ref: AppConfigMeetupDemoEnvironment
+
+    MyAppConfigExtension:
+      Type: "AWS::AppConfig::Extension"
+      Properties:
+        Name: "MyOnDeploymentCompleteExtension"
+        Actions:
+          ON_DEPLOYMENT_COMPLETE:
+            - Name: "InvokeLambdaFunction"
+              Uri: arn:aws:lambda:ap-southeast-1:329599631112:function:appconfig-notification-on-deployment-complete
+              RoleArn: arn:aws:iam::329599631112:role/aws-apigateway-lambda-authorization
+
+functions:
+  AppConfigFunctionMeetupDemo:
+    name: appconfig-function-meetup-demo
+    handler: handlers/appconfig-fundtion-meetup-demo.handler
+    layers:
+      - arn:aws:lambda:ap-southeast-1:980059726660:layer:AWS-AppConfig-Extension:125
+    events:
+      - http: 
+          path: /get_appconfig_fn_meetup_demo
+          method: post
+    environment:
+      AWS_APPCONFIG_EXTENSION_POLL_INTERVAL_SECONDS: 30
+      AWS_APPCONFIG_EXTENSION_POLL_TIMEOUT_MILLIS: 3000
+      AWS_APPCONFIG_EXTENSION_HTTP_PORT: 2772
+      STAGE: ${self:provider.stage}
+
+  AppConfigNotificationOnDeploymentComplete:
+    name: appconfig-notification-on-deployment-complete
+    handler: handlers/appconfig-notification-on-deployment-complete.handler

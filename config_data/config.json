@@ -1,0 +1,18 @@
+{
+  "version": "1",
+  "flags": {
+      "DEV": {
+          "enabled": true,
+          "description": "Development configuration data"
+      },
+      "STG": {
+          "enabled": false,
+          "description": "Staging configuration data"
+      },
+      "PROD": {
+          "enabled": false,
+          "description": "Production configuration data"
+      }
+  },
+  "values": {}
+}
